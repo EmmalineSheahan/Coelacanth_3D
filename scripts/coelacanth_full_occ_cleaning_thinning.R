@@ -39,19 +39,36 @@ l_chalumnae_occs <- l_chalumnae %>% dplyr::select(c(Longitude, Latitude,
                                                     Depth..m.))
 colnames(l_chalumnae_occs) <- c("longitude", "latitude", "depth")
 
-# reading in bathymetry layer
-bath <- rast('./coelacanth_data/bathymetry/ETOPO1_Bed_c_geotiff.tif')
-bath_crop <- crop(bath, l_chalumnae_sp)
-
-bath_depths <- extract(bath_crop, l_chalumnae_sp)
-
-depth_compare <- cbind(l_chalumnae_occs, abs(bath_depths))
-which(depth_compare$depth == depth_compare$ETOPO1_Bed_c_geotiff)
-
 # reading in a WOA 1 degree raster layer for spatial thinning
+temperature <- rast('./WOA_18/temperature_summer_18.tif')
 
 # thinning occurrences
-l_chalumnae_thin <- 
-  l_chalumnae %>% dplyr::select(c(Species, Longitude, Latitude))
+# Get the layer index for each occurrence by matching to depth
+layerNames <- as.numeric(gsub("X", "", names(temperature)))
+l_chalumnae_occs$index <- unlist(lapply(l_chalumnae_occs$depth, 
+                          FUN = function(x) which.min(abs(layerNames - x))))
+indices <- unique(l_chalumnae_occs$index)
+
+# downsampling occurrences
+l_chalumnae_down <- data.frame()
+for(i in indices){
+  tempPoints <- l_chalumnae_occs[l_chalumnae_occs$index==i,]
+  tempPoints <- downsample(tempPoints, temperature[[1]])
+  tempPoints$depth <- rep(layerNames[[i]], times = nrow(tempPoints))
+  l_chalumnae_down <- rbind(l_chalumnae_down, tempPoints)
+}
+
+# creating spatial points for downsampled occs
+l_chalumnae_down_sp <- l_chalumnae_down
+coordinates(l_chalumnae_down_sp) <- ~longitude + latitude
+l_chalumnae_down_sp <- st_as_sf(l_chalumnae_down_sp)
+st_crs(l_chalumnae_down_sp) <- target_crs
+
+# occurrence plot
+plot(l_chalumnae_down_sp$geometry, col = "red")
+plot(land, col = NA, add = T)
+
+# writing downsampled occurrences with indexed depth to file
+write.csv(l_chalumnae_down, file = './data/l_chalumnae_down_3D.csv')
 
 
