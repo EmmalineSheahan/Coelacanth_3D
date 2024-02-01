@@ -1,4 +1,4 @@
-# Formatting and thinning the full Coelacanth occurrence data set
+# Formatting and thinning the full Ceolacanth occurrence data set
 
 library(dplyr)
 library(sf)
@@ -7,6 +7,9 @@ library(ggplot2)
 library(voluModel)
 library(rnaturalearth)
 library(rgdal)
+library(ggspatial)
+library(paletteer)
+library(spThin)
 
 # creating wanted crs and land polygon
 wanted_crs <- make_EPSG() %>% filter(code == 4326)
@@ -21,6 +24,7 @@ all_occs <-
 # filtering for only Latimeria chalumnae
 l_chalumnae <- all_occs %>% filter(Species == "Latimeria chalumnae")
 
+# 3D occurrences
 # filtering for only records which have depth information
 l_chalumnae <- l_chalumnae %>% filter(!(is.na(Depth..m.)))
 
@@ -39,7 +43,7 @@ l_chalumnae_occs <- l_chalumnae %>% dplyr::select(c(Longitude, Latitude,
                                                     Depth..m.))
 colnames(l_chalumnae_occs) <- c("longitude", "latitude", "depth")
 
-# reading in a WOA 1 degree raster layer for spatial thinning
+# reading in a WOA 1/4 degree raster layer for spatial thinning
 temperature <- rast('./WOA_18/temperature_summer_18.tif')
 
 # thinning occurrences
@@ -68,7 +72,46 @@ st_crs(l_chalumnae_down_sp) <- target_crs
 plot(l_chalumnae_down_sp$geometry, col = "red")
 plot(land, col = NA, add = T)
 
+pdf('./Plots/Coelacanth_3D_downsampled_occs_with_depth.pdf')
+ggplot(data = land) +
+  geom_sf() +
+  annotation_scale(location = "bl", width_hint = 0.5) +
+  annotation_north_arrow(location = "bl", which_north = "true", 
+                         pad_x = unit(0.75, "in"), pad_y = unit(0.5, "in"),
+                         style = north_arrow_fancy_orienteering) +
+  coord_sf(xlim = c(24.875, 47.125), ylim = c(-37.125, -3.125)) +
+  geom_point(data = l_chalumnae_down, aes(x = longitude, y = latitude, 
+                                          color = depth), size = 3.5) +
+  scale_colour_paletteer_c("viridis::plasma", trans = "reverse") +
+  theme(panel.background = element_rect(fill = "lightblue")) +
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank()) +
+  labs(colour = "Depth (m)")
+dev.off()
+
 # writing downsampled occurrences with indexed depth to file
 write.csv(l_chalumnae_down, file = './data/l_chalumnae_down_3D.csv')
 
+# 2D occurrences
+# filtering for only Latimeria chalumnae
+l_chalumnae <- all_occs %>% filter(Species == "Latimeria chalumnae")
+
+# removing coordinates with large georeferencing error
+l_chalumnae <- 
+  l_chalumnae[-which(as.numeric(l_chalumnae$Georeference.error..m.) > 10000),]
+l_chalumnae_maxent <- data.frame(l_chalumnae$Species, 
+                                 as.numeric(l_chalumnae$Longitude),
+                                 as.numeric(l_chalumnae$Latitude))
+colnames(l_chalumnae_maxent) <- c("species", "longitude", "latitude")
+
+# spatially thinning coordinates
+l_chalumnae_maxent_final <- thin(loc.data = l_chalumnae_maxent,
+                                 lat.col = "latitude",
+                                 long.col = "longitude",
+                                 spec.col = "species",
+                                 thin.par = 5,
+                                 reps = 1, write.files = F, 
+                                 locs.thinned.list.return = T)
+species <- rep("Latimeria chalumnae", times = nrow(l_chalumnae_maxent_final[[1]]))
+l_chalumnae_maxent_final <- data.frame(species, l_chalumnae_maxent_final[[1]])
+write.csv(l_chalumnae_maxent_final, file = './data/l_chalumnae_maxent_2D.csv')
 
