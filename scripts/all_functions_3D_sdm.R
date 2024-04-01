@@ -677,8 +677,10 @@ threshold_3D <- function(wanted_model, projection_layers, predicted_layers,
   for(i in seq_along(thresholding_vals)) {
     thresholded_layers <- vector("list", length = length(predicted_layers))
     real_abs_list <- vector("list", length = length(bg_list))
-    thresh <- round(length(sdm_suits)*thresholding_vals[i])
+    thresh <- trunc(length(sdm_suits)*thresholding_vals[i])
     thresh_val <- sdm_suits[thresh]
+    a <- thresh
+    c <- length(sdm_suits) - thresh
     for(j in 1:dim(predicted_layers)[3]) {
       thresholded_layers[[j]] <- rast(reclassify(raster(predicted_layers[[j]]), 
                                           rcl = c(0, thresh_val, 0, 
@@ -689,7 +691,9 @@ threshold_3D <- function(wanted_model, projection_layers, predicted_layers,
     real_abs <- do.call(rbind, real_abs_list)[,2]
     specificity <- length(which(real_abs == 0))/length(real_abs)
     sensitivity <- thresholding_vals[i]
-    tss <- (sensitivity + ((1/3)*specificity)) - 1
+    d <- length(which(real_abs == 0))
+    b <- length(real_abs) - length(which(real_abs == 0))
+    tss <- ((-2*a*b) + (a*d) - (3*c*b))/(3*(a+c)*(b+d))
     tss_list[i] <- tss
     spec_list[i] <- specificity
     suit_list[i] <- thresh_val

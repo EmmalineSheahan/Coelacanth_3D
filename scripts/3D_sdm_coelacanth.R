@@ -137,7 +137,7 @@ save(best_mod,
 l_chalumnae_suit <- l_chalumnae_mod_k$predictions[[14]]
 l_chalumnae_k_thresh <- threshold_3D(projection_layers = NA, 
                         predicted_layers = l_chalumnae_suit,
-                        thresholding_vals = c(0.99, 0.95, 0.90), 
+                        thresholding_vals = c(0.99, 0.95, 0.9, 0.85, 0.8, 0.75), 
                         occ_list = l_chalumnae_sp_list,
                         bg_list = l_chalumnae_bg_list)
 writeRaster(l_chalumnae_k_thresh$threshold_layers,

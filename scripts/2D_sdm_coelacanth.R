@@ -143,7 +143,7 @@ writeRaster(best_sdm, filename = './Model_results/coelacanth_2D_suitability.tif'
 save(best_sdm_model, file = './Model_results/best_sdm_mod_2D.Rdata')
 
 # thresholding
-percentiles <- c(0.99, 0.95, 0.9)
+percentiles <- c(0.99, 0.95, 0.9, 0.85, 0.8, 0.75)
 presences <- l_chalumnae_2D[,3:4]
 coordinates(presences) <- ~Longitude+Latitude
 proj4string(presences) <- "+proj=longlat +datum=WGS84"
@@ -158,7 +158,9 @@ tss_list <- vector(length = length(percentiles))
 thresh_val_list <- vector(length = length(percentiles))
 specificity_list <- vector(length = length(percentiles))
 for (j in seq_along(percentiles)) {
-  thresh <- round(length(sdm_suit)*percentiles[j])
+  thresh <- trunc(length(sdm_suit)*percentiles[j])
+  a <- thresh
+  c <- length(sdm_suit) - thresh
   thresh_val <- sdm_suit[thresh]
   thresh_val_list[j] <- thresh_val
   thresholded_sdm <- reclassify(best_sdm, 
@@ -168,7 +170,9 @@ for (j in seq_along(percentiles)) {
   specificity <- length(which(real_abs == 0))/length(real_abs)
   specificity_list[j] <- specificity
   sensitivity <- percentiles[j]
-  tss <- (sensitivity + ((1/3)*specificity)) - 1
+  d <- length(which(real_abs == 0))
+  b <- length(real_abs) - length(which(real_abs == 0))
+  tss <- ((-2*a*b) + (a*d) - (3*c*b))/(3*(a+c)*(b+d))
   tss_list[j] <- tss
 }
 
@@ -176,7 +180,7 @@ choose_final <- which(tss_list == max(tss_list))
 final_sdm <- thresh_sdm_list[[choose_final]]
 
 tss_df <- data.frame(percentiles, specificity_list, tss_list, thresh_val_list)
-colnames(tss_df) <- c("Sensitivity", "Specificty", "TSS", 
+colnames(tss_df) <- c("Sensitivity", "Specificity", "TSS", 
                       "Suitability")
 write.csv(tss_df, file = './Model_results/l_chalumnae_2D_sdm_tss_results.csv')
 

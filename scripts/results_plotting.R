@@ -17,7 +17,7 @@ target_crs <- "+proj=longlat +datum=WGS84"
 land <- st_as_sf(rnaturalearthhires::countries10)[1] %>% 
   st_set_crs(target_crs)
 
-# reading in 2D suitability and thresholded SPatRasters
+# reading in 2D suitability and thresholded SpatRasters
 suit_2D <- rast('./Model_results/coelacanth_2D_suitability.tif')
 thresh_2D <- rast('./Model_results/coelacanth_2D_thresholded.tif')
 
@@ -487,7 +487,7 @@ print(p)
 dev.off()
 
 # Indopacific Projection 2D
-l_menadoensis_2D <- read.csv('./data/l_menadoensis_2D_occs')
+l_menadoensis_2D <- read.csv('./data/l_menadoensis_2D_occs.csv')
 
 # suitability
 Indo_suit_2D <- rast('./Model_results/indopacific_projection_2D.tif')
@@ -496,7 +496,7 @@ pdf('./Plots/Indo_projection_2D_suit_final.pdf')
 ggplot() +
   geom_spatraster(data = Indo_suit_2D) +
   geom_sf(data = land) +
-  coord_sf(xlim = c(78.75, 178.5), ylim = c(-43.5, 45.5), expand = F) +
+  coord_sf(xlim = c(78.75, 150), ylim = c(-30, 39), expand = F) +
   scale_fill_gradientn(colors = c("white", viridis(4)), 
                        values = c(0, 0.25, 0.5, 0.75, 1),
                        na.value = "transparent",
@@ -507,12 +507,13 @@ dev.off()
 
 # plotting 2D threshold
 indo_thresh_2D <- rast('./Model_results/indopacific_threshold_2D.tif')
+indo_thresh_2D_nm <- rast('./Model_results/indopacific_threshold_2D_notmasked.tif')
 
 pdf('./Plots/Indo_projection_2D_thresh_final.pdf')
 ggplot() +
-  geom_spatraster(data = indo_thresh_2D) +
+  geom_spatraster(data = indo_thresh_2D_nm) +
   geom_sf(data = land) +
-  coord_sf(xlim = c(78.75, 178.5), ylim = c(-43.5, 45.5), expand = F) +
+  coord_sf(xlim = c(78.75, 150), ylim = c(-30, 39), expand = F) +
   scale_fill_gradientn(colors = c("white", "darkgreen"), values = c(0,1),
                        na.value = "transparent") +
   theme(panel.grid.major = element_blank(), 
@@ -521,26 +522,91 @@ dev.off()
 
 pdf('./Plots/Indo_projection_2D_thresh_final_zoom_points.pdf')
 ggplot() +
-  geom_spatraster(data = indo_thresh_2D) +
+  geom_spatraster(data = indo_thresh_2D_nm) +
   geom_sf(data = land) +
-  geom_point(data = l_menadoensis_2D, aes(x = Longitude, y = Latitude), size = 2.5,
-             color = "orange") +
-  coord_sf(xlim = c(115, 145), ylim = c(-15, 10), expand = F) +
-  scale_fill_gradientn(colors = c("white", "darkgreen"), values = c(0,1),
+  geom_point(data = l_menadoensis_2D, aes(x = Longitude, y = Latitude), size = 2,
+             color = "#440154FF") +
+  coord_sf(xlim = c(120, 137), ylim = c(-5, 5), expand = F) +
+  scale_fill_gradientn(colors = c("white", "#35B779FF"), values = c(0,1),
                        na.value = "transparent") +
   theme(panel.grid.major = element_blank(), 
         panel.background = element_rect(fill = "white"), legend.position = "none")
-  
 dev.off()
 
 # 3D Indo plots
 # reading in env layer for depth list
 conductivity_summer_18_indo <- rast('./Envs_Indo/conductivity_summer_18_indo.tif')
-men_depths <- names(conductivity_summer_18_indo)
+men_depths <- as.numeric(gsub("X", '', names(conductivity_summer_18_indo)))
 
 # reading in suitability and threshold layers
 indo_3D_suit <- rast('./Model_results/Indopacific_projection_3D.tif')
 indo_3D_thresh <- rast('./Model_results/Indopacific_thresholded_3D.tif')
+indo_3D_thresh_nm <- rast('./Model_results/Indopacific_thresholded_3D_notmasked.tif')
+
+# plotlayers plot of suitability
+names(indo_3D_thresh) <- men_depths
+
+pdf('./Plots/indo_3D_plotlayers.pdf')
+plotLayers(rast = indo_3D_thresh, land = land)
+dev.off()
+
+# suitability plot layer by layer
+pdf('./Plots/indo_3D_suit_all_layers.pdf')
+for(i in 1:dim(indo_3D_suit)[3]) {
+  p <- ggplot() +
+    geom_spatraster(data = indo_3D_suit[[i]]) +
+    geom_sf(data = land) +
+    coord_sf(xlim = c(78.75, 150), ylim = c(-30, 39), expand = F) +
+    scale_fill_gradientn(colors = c("white", viridis(4)), 
+                         values = c(0, 0.25, 0.5, 0.75, 1),
+                         na.value = "transparent",
+                         name = "Suitability Score") +
+    theme(panel.grid.major = element_blank(), 
+          panel.background = element_rect(fill = "white")) +
+    ggtitle(paste0("Suitability at ", men_depths[i], " m"))
+  print(p)
+}
+dev.off()
+
+# thresholded plot layer by layer
+pdf('./Plots/indo_3D_thresh_all_layers.pdf')
+for(i in 1:dim(indo_3D_thresh_nm)[3]) {
+  p <- ggplot() +
+    geom_spatraster(data = indo_3D_thresh_nm[[i]]) +
+    geom_sf(data = land) +
+    coord_sf(xlim = c(78.75, 150), ylim = c(-30, 39), expand = F) +
+    scale_fill_gradientn(colors = c("white", "darkgreen"), 
+                         values = c(0, 1),
+                         na.value = "transparent") +
+    theme(panel.grid.major = element_blank(), 
+          panel.background = element_rect(fill = "white"), legend.position = "none") +
+    ggtitle(paste0("Thresholded Presence at ", men_depths[i], " m"))
+  print(p)
+}
+dev.off()
+
+# creating zoomed in plots of the layers where there are occurrences
+men_3D_occs <- read.csv('./data/l_menadoensis_3D_occs.csv')
+unique_depths <- unique(men_3D_occs$depth)
+want_layers <- which(men_depths %in% unique_depths)
+
+pdf('./Plots/indo_zoom_menadoensis_occ_plots.pdf')
+for (i in seq_along(want_layers)) {
+  need_dat <- men_3D_occs %>% filter(depth == men_depths[want_layers[i]])
+  p <- ggplot() +
+    geom_spatraster(data = indo_3D_thresh_nm[[want_layers[i]]]) +
+    geom_sf(data = land) +
+    geom_point(data = need_dat, aes(x = Longitude, y = Latitude), size = 2,
+               color = "#440154FF") +
+    coord_sf(xlim = c(120, 137), ylim = c(-5, 5), expand = F) +
+    scale_fill_gradientn(colors = c("white", "#35B779FF"), values = c(0,1),
+                         na.value = "transparent") +
+    theme(panel.grid.major = element_blank(), 
+        panel.background = element_rect(fill = "white"), legend.position = "none") +
+    ggtitle(paste0("Thresholded Presence at ", men_depths[want_layers[i]], " m"))
+  print(p)
+}
+dev.off()
 
 # converting rasters to xyz matrices
 indo_suit_mat <- rast_to_mat(indo_3D_suit, men_depths, thresholded = F)
@@ -552,13 +618,14 @@ thresh_topdown_indo <- contour_mat(wanted_mat = indo_thresh_mat, wanted_z = "z",
                               wanted_x = "x",
                               wanted_y = "y", orientation = "top", thresholded = T)
 thresh_topdown_df_indo <- thresh_topdown_indo %>% dplyr::select(x, y, thresh_val)
-thresh_topdown_rast_indo <- rast(thresh_topdown_df, type = 'xyz', crs = target_crs)
+thresh_topdown_rast_indo <- rast(thresh_topdown_df_indo, type = 'xyz', 
+                                 crs = target_crs)
 
 pdf('./Plots/Indonesia_3D_contour_topdown.pdf')
 p <- ggplot() +
   geom_spatraster(data = thresh_topdown_rast_indo) +
   geom_sf(data = land) +
-  coord_sf(xlim = c(9.25, 63.75), ylim = c(-48.75, 14.25), expand = F) +
+  coord_sf(xlim = c(78.75, 150), ylim = c(-39, 30), expand = F) +
   scale_fill_gradientn(colors = c("white", "darkgreen"), 
                        values = c(0, 1),
                        na.value = "transparent") +
@@ -585,7 +652,7 @@ p <- ggplot(data = thresh_east_df_indo, aes(x, y)) +
         axis.title = element_text(size = 15)) +
   xlab("Depth (m)") +
   ylab("Latitude") +
-  ylim(-48.75, 14.25)
+  ylim(-39, 30)
 print(p)
 dev.off()
 
@@ -603,7 +670,7 @@ p <- ggplot(data = thresh_south_df_indo, aes(x, y)) +
         axis.title = element_text(size = 15)) +
   xlab("Longitude") +
   ylab("Depth (m)") +
-  xlim(9.25, 63.75)
+  xlim(78.75, 150)
 print(p)
 dev.off()
 
@@ -619,7 +686,7 @@ pdf('./Plots/Indonesia_3D_suit_contour_topdown.pdf')
 p <- ggplot() +
   geom_spatraster(data = suit_topdown_rast_indo) +
   geom_sf(data = land) +
-  coord_sf(xlim = c(9.25, 63.75), ylim = c(-48.75, 14.25), expand = F) +
+  coord_sf(xlim = c(78.75, 150), ylim = c(-39, 30), expand = F) +
   scale_fill_gradientn(colors = c("white", viridis(4)), 
                        values = c(0, 0.25, 0.5, 0.75, 1),
                        na.value = "transparent",
@@ -633,7 +700,8 @@ print(p)
 dev.off()
 
 # suitability east of top
-suit_east_indo <- contour_mat(wanted_mat = indo_suit_mat, wanted_z = 'x', wanted_x = "z",
+suit_east_indo <- contour_mat(wanted_mat = indo_suit_mat, wanted_z = 'x', 
+                              wanted_x = "z",
                          wanted_y = "y", orientation = "east", thresholded = F,
                          wanted_val = "s")
 suit_east_df_indo <- suit_east_indo %>% dplyr::select(x, y, suit_val)
@@ -651,7 +719,7 @@ p <- ggplot(data = suit_east_df_indo, aes(x, y, fill = suit_val)) +
         axis.title = element_text(size = 15)) +
   xlab("Depth (m)") +
   ylab("Latitude") +
-  ylim(-48.75, 14.25)
+  ylim(-39, 30)
 print(p)
 dev.off()
 
@@ -674,6 +742,6 @@ p <- ggplot(data = suit_south_df_indo, aes(x, y, fill = suit_val)) +
         axis.title = element_text(size = 15)) +
   xlab("Longitude") +
   ylab("Depth (m)") +
-  xlim(9.25, 63.75)
+  xlim(78.75, 150)
 print(p)
 dev.off()
