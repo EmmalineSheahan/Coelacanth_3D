@@ -1,10 +1,10 @@
 # all functions necessary for the 3D niche modeling pipeline
-library(raster)
+
 library(terra)
 library(dplyr)
 library(maxnet)
 library(rnaturalearth)
-library(dismo)
+library(predicts)
 library(ENMeval)
 library(voluModel)
 library(sf)
@@ -18,9 +18,11 @@ library(sf)
 # returns a raster stack cropped and masked at each depth layer to the 
 # accessible area
 crop_stack <- function(enviro, accarea, which_interpolate) {
+  if(!(is.na(which_interpolate))) {
     for (i in seq_along(which_interpolate)) {
       enviro[[i]] <- interpolateRaster(enviro[[i]])
     }
+  }
     temp <- mask(enviro, accarea)
   return(temp)
 }
@@ -85,9 +87,14 @@ bg_list_maker <- function(enviro_stack, depth_slices, wanted_var, wanted_num,
   bg_list <- vector("list", length = length(depth_slices))
   for (i in 1:length(depth_slices)) {
     pull_this <- which(names(enviro_stack[[i]]) == wanted_var)
-    bg <- dismo::randomPoints(raster(enviro_stack[[i]][[pull_this]]), 
-                              n = wanted_num, p = presences[[i]]) %>% 
-      as.data.frame()
+    if(any(is.na(presences[[i]]))) {
+      bg <- predicts::backgroundSample(mask = enviro_stack[[i]][[pull_this]], 
+                              n = wanted_num)
+    } else {
+      bg <- predicts::backgroundSample(mask = enviro_stack[[i]][[pull_this]], 
+                                       n = wanted_num, p = presences[[i]])
+    }
+    bg <- data.frame(bg)
     colnames(bg) <- c("longitude", "latitude")
     bg_list[[i]] <- bg
   }
@@ -166,7 +173,9 @@ brick_extract <- function(wanted_brick, wanted_sp, wanted_bg) {
 var_remove <- function(wanted_envs, wanted_sp, wanted_bg) {
   maxent_df <- brick_extract(wanted_brick = wanted_envs, wanted_sp = wanted_sp,
                              wanted_bg = wanted_bg)
-  initial_mod <- maxent(x = maxent_df[[3]][,-1], p = maxent_df[[3]][,1])
+  df_part <- maxent_df[[3]][,-1]
+  pres_vec <- maxent_df[[3]][,1]
+  initial_mod <- MaxEnt(x = df_part, p = pres_vec)
   initial_results <- data.frame(initial_mod@results)
   measure_name <- row.names(initial_results)
   perm_import <- data.frame(measure_name, 
@@ -229,7 +238,6 @@ var_select <- function(wanted_brick, wanted_sp, wanted_bg) {
       t <- max(usdm::vif(alldepth_env)$VIF)
     }
   }
-  
   return(final_env)
 }
 
@@ -246,6 +254,8 @@ partition_3D <- function(wanted_sp, wanted_bg, maxent_df, which_partition,
                          aggregation.factor, kfolds) {
   partition_list <- vector("list", length = length(wanted_sp))
   if(which_partition == 'k.fold') {
+    unique_bins_total <- 0
+    while(unique_bins_total != factorial(kfolds)) {
     for(i in 1:length(wanted_sp)) {
       if(any(is.na(wanted_sp[[i]]))) {
         katdepth <- list(occs.grp = NA, bg.grp = sample(c(1:kfolds), 
@@ -258,6 +268,13 @@ partition_3D <- function(wanted_sp, wanted_bg, maxent_df, which_partition,
         katdepth <- list(occs.grp = occs.grp, bg.grp = bg.grp)
         partition_list[[i]] <- katdepth
       }
+    }
+    just_occs <- vector("list", length = length(partition_list))
+    for (i in 1:length(partition_list)) {
+      just_occs[[i]] <- partition_list[[i]]$occs.grp
+    }
+    just_occs <- unlist(just_occs)[which(!(is.na(unlist(just_occs))))]
+    unique_bins_total <- prod(unique(just_occs))
     }
   } else if(which_partition == 'block') {
     for(i in 1:length(wanted_sp)) {
@@ -416,7 +433,7 @@ maxent_3D <- function(df_for_maxent, wanted_fc, wanted_rm, wanted_partition,
     print("running models")
     for(i in 1:length(final_perm_list)) {
       # create model
-      mod1 <- maxent(x = df_for_maxent[,-1], p = df_for_maxent[,1], 
+      mod1 <- MaxEnt(x = df_for_maxent[,-1], p = df_for_maxent[,1], 
                    args = c(paste0("betamultiplier=", 
                                    final_perm_list[[i]][[1]]),
                                    paste0(final_perm_list[[i]][[2]])))
@@ -486,7 +503,7 @@ maxent_3D <- function(df_for_maxent, wanted_fc, wanted_rm, wanted_partition,
     print("running models")
     for(i in 1:length(final_perm_list)) {
       # create model
-      mod1 <- maxent(x = df_for_maxent[,-1], p = df_for_maxent[,1], 
+      mod1 <- MaxEnt(x = df_for_maxent[,-1], p = df_for_maxent[,1], 
                      args = c(paste0("betamultiplier=", 
                                      final_perm_list[[i]][[1]]),
                               paste0(final_perm_list[[i]][[2]])))
@@ -521,7 +538,7 @@ maxent_3D <- function(df_for_maxent, wanted_fc, wanted_rm, wanted_partition,
       print(paste0("training and testing models for partition ", i))
       for(j in 1:length(final_perm_list)) { 
         # generating each model combination for partition i
-        train_model <- maxent(x = train_full[,-1], p = train_full[,1], 
+        train_model <- MaxEnt(x = train_full[,-1], p = train_full[,1], 
                        args = c(paste0("betamultiplier=", 
                                        final_perm_list[[j]][[1]]),
                                 paste0(final_perm_list[[j]][[2]])))
@@ -530,10 +547,10 @@ maxent_3D <- function(df_for_maxent, wanted_fc, wanted_rm, wanted_partition,
         # retrieving validation auc
         test_full_present <- test_full %>% filter(presence == 1)
         test_full_absent <- test_full %>% filter(presence == 0)
-        ev <- dismo::evaluate(p = as.matrix(test_full_present[,-1]), 
-                       a = as.matrix(test_full_absent[,-1]), 
+        ev <- predicts::pa_evaluate(p = test_full_present[,-1], 
+                       a = test_full_absent[,-1], 
                        model = train_model)
-        auc_val_per_param_list[j] <- ev@auc
+        auc_val_per_param_list[j] <- ev@stats$auc
         # retrieving training AUC
         auc_train_per_param_list[[j]] <- 
           train_model@results[which(rownames(train_model@results) == "Training.AUC"),1]
@@ -544,7 +561,7 @@ maxent_3D <- function(df_for_maxent, wanted_fc, wanted_rm, wanted_partition,
         nonzero_coef <- all_coef[which(all_coef != 0)]
         nonzero_coef <- nonzero_coef[which(nonzero_coef != 0.000000e+00)]
         nonzero_coef_list[j] <- length(nonzero_coef)
-        # generate predictions; AICc will be calulated after model averaging across
+        # generate predictions; AICc will be calculated after model averaging across
         # partitions
         predicted_suit_list <- vector("list", length = length(projection_layers))
         wanted_val_list <- vector("list", length = length(projection_layers))
@@ -643,21 +660,13 @@ maxent_3D <- function(df_for_maxent, wanted_fc, wanted_rm, wanted_partition,
   return(final_output)
 }
 
-# threshold_3D outputs a SpatRaster stack of thresholded rasters. It can either take
-# the $predictions output of maxent_3D, which is the model projected back onto
-# the accessible area, or a new projection layer set for the model to be projected
-# and thresholded on.
-# wanted_model = model for projecting
-# projection_layers = spatraster stack recieved from running dismo::predict on
-# a list of new environmental variable for a new time or place
+# threshold_3D outputs a SpatRaster stack of thresholded rasters.
 # predicted_layers = $predictions output of maxent_3D
 # thresholding_vals = a vector of threshold percentile values
 # occ_list = the list of occurrences by depth slice
-# bg_list = the list of bachground values by depth slice
-threshold_3D <- function(wanted_model, projection_layers, predicted_layers,
+# bg_list = the list of background values by depth slice
+threshold_3D <- function(predicted_layers,
                          thresholding_vals, occ_list, bg_list) {
-  # first for the case where the predictions from maxent_3D are provided
-  if(is.na(projection_layers)) {
     sdm_suit_vals <- vector("list", length = length(occ_list))
     for(i in 1:length(occ_list)) {
       if(any(is.na(occ_list[[i]]))) {
@@ -682,9 +691,10 @@ threshold_3D <- function(wanted_model, projection_layers, predicted_layers,
     a <- thresh
     c <- length(sdm_suits) - thresh
     for(j in 1:dim(predicted_layers)[3]) {
-      thresholded_layers[[j]] <- rast(reclassify(raster(predicted_layers[[j]]), 
-                                          rcl = c(0, thresh_val, 0, 
-                                                    thresh_val, 1, 1)))
+      rclmat <- matrix(data = c(0, thresh_val, 0, 
+                                thresh_val, 1, 1), nrow = 2, ncol = 3, byrow = T)
+      thresholded_layers[[j]] <- classify(predicted_layers[[j]], 
+                                          rcl = rclmat)
       real_abs_list[[j]] <- terra::extract(thresholded_layers[[j]], bg_list[[j]])
     }
     thresh_sdm_list[[i]] <- rast(thresholded_layers)
@@ -699,12 +709,15 @@ threshold_3D <- function(wanted_model, projection_layers, predicted_layers,
     suit_list[i] <- thresh_val
   }
   choose_final <- which(tss_list == max(tss_list))
+  if(length(choose_final) > 1) {
+    wanted <- thresholding_vals[choose_final][order(thresholding_vals[choose_final])]
+    choose_final <- length(wanted)
+  }
   tss_df <- data.frame(thresholding_vals, spec_list, tss_list, suit_list)
-  colnames(tss_df) <- c("Sensitivity", "Specificty", "TSS", 
+  colnames(tss_df) <- c("Sensitivity", "Specificity", "TSS", 
                         "Suitability")
   final_threshold_output <- list(threshold_layers = thresh_sdm_list[[choose_final]],
                                  tss_results = tss_df)
-  }
   return(final_threshold_output)
 }
 

@@ -1,5 +1,8 @@
 # MESS Analysis
 
+package_list <- c("ggplot2", "modEvA", "tidyterra", "viridis", "doParallel")
+install.packages(package_list)
+
 library(voluModel)
 library(ggplot2)
 library(dplyr)
@@ -9,6 +12,7 @@ library(modEvA)
 library(tidyterra)
 library(viridis)
 library(doParallel)
+library(rnaturalearthhires)
 
 # creating land for plotting
 target_crs <- "+proj=longlat +datum=WGS84"
@@ -34,7 +38,7 @@ conductivity_winter_indo <-
 temperature_summer_indo <- 
   rast('./Envs_Indo/env_indo_3D_temperature_summer_interpolated.tif')
 current_north_december_indo <- 
-  rast('./Envs_Indo/env_Indo_3D_current_north_december_interpolated.tif')
+  rast('./Envs_Indo/env_indo_3D_current_north_december_interpolated.tif')
 slope_indo <- rast('./Envs_Indo/env_indo_3D_slope_interpolated.tif')
 
 # Creating mess dataframes
@@ -59,14 +63,12 @@ envs_3D_indo <- list(conductivity_winter_indo, current_north_december_indo,
                      slope_indo, temperature_summer_indo)
 
 all_depths <- as.numeric(gsub("X", '', names(conductivity_winter)))
-wanted_slices <- c(0, 50, 100, 150, 200, 250, 300, 800)
-pull_these <- which(all_depths %in% wanted_slices)
 
-depth_list <- vector("list", length = length(pull_these))
+depth_list <- vector("list", length = length(all_depths))
 want_dat_list <- vector("list", length = length(envs_3D))
-for (j in seq_along(pull_these)) {
+for (j in seq_along(all_depths)) {
   for (i in 1:length(envs_3D)) {
-    want_dat_list[[i]] <- values(envs_3D[[i]][[pull_these[j]]])[,1]
+    want_dat_list[[i]] <- values(envs_3D[[i]][[j]])[,1]
   }
   depth_list[[j]] <- do.call(cbind, want_dat_list)
   colnames(depth_list[[j]]) <- c("conductivity_winter", "current_north_december",
@@ -75,11 +77,11 @@ for (j in seq_along(pull_these)) {
 }
 cal_3D_list <- depth_list
 
-depth_list_indo <- vector("list", length = length(pull_these))
+depth_list_indo <- vector("list", length = length(all_depths))
 want_dat_list_indo <- vector("list", length = length(envs_3D_indo))
-for (j in seq_along(pull_these)) {
+for (j in seq_along(all_depths)) {
   for (i in 1:length(envs_3D_indo)) {
-    want_dat_list_indo[[i]] <- values(envs_3D_indo[[i]][[pull_these[j]]])[,1]
+    want_dat_list_indo[[i]] <- values(envs_3D_indo[[i]][[j]])[,1]
   }
   depth_list_indo[[j]] <- do.call(cbind, want_dat_list_indo)
   colnames(depth_list_indo[[j]]) <- c("conductivity_winter", "current_north_december",
@@ -99,7 +101,7 @@ mess_2D_spat <- rast(mess_xyz_2D, type = "xyz", crs = target_crs)
 
 values(mess_2D_spat)[which(values(mess_2D_spat) < -125)] <- NA
 
-pdf('./Plots/MESS_2D_indo.pdf')
+pdf('./Plots/MESS_2D_indo.pdf', pointsize = 3)
 ggplot() +
   geom_spatraster(data = mess_2D_spat) +
   geom_sf(data = land) +
@@ -135,7 +137,7 @@ stopCluster(cl)
 messspat_3D <- rast(messspat_3D_list)
 writeRaster(messspat_3D, './Model_results/mess_3D.tif', overwrite = T)
 
-pdf('./Plots/MESS_3D_indo.pdf')
+pdf('./Plots/MESS_3D_indo.pdf', pointsize = 3)
 for (i in 1:dim(messspat_3D)[3]) {
   p <- ggplot() +
     geom_spatraster(data = messspat_3D[[i]]) +

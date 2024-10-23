@@ -137,6 +137,9 @@ env_maker(wanted_data = './WOA_18/woa18_decav_t15mn04.csv',
 env_maker(wanted_data = './WOA_18/woa18_decav_t15mn04.csv',
           output_name = './Envs_Indo/temperature_summer_18_indo.tif',
           wanted_extent = temp_rast_ext_men)
+env_maker(wanted_data = './WOA_18/woa18_decav_t13mn04.csv',
+          output_name = './Envs_Indo/temperature_winter_18_indo.tif',
+          wanted_extent = temp_rast_ext_men)
 
 # Salinity
 gunzip('./WOA_18/woa18_decav_s13mn04.csv.gz')
@@ -152,6 +155,9 @@ env_maker(wanted_data = './WOA_18/woa18_decav_s15mn04.csv',
 env_maker(wanted_data = './WOA_18/woa18_decav_s13mn04.csv',
           output_name = './Envs_Indo/salinity_winter_18_indo.tif',
           wanted_extent = temp_rast_ext_men)
+env_maker(wanted_data = './WOA_18/woa18_decav_s15mn04.csv',
+          output_name = './Envs_Indo/salinity_summer_18_indo.tif',
+          wanted_extent = temp_rast_ext_men)
 
 # Density
 gunzip('./WOA_18/woa18_decav_I13mn04.csv.gz')
@@ -166,6 +172,9 @@ env_maker(wanted_data = './WOA_18/woa18_decav_I15mn04.csv',
 
 env_maker(wanted_data = './WOA_18/woa18_decav_I15mn04.csv',
           output_name = './Envs_Indo/density_summer_18_indo.tif',
+          wanted_extent = temp_rast_ext_men)
+env_maker(wanted_data = './WOA_18/woa18_decav_I13mn04.csv',
+          output_name = './Envs_Indo/density_winter_18_indo.tif',
           wanted_extent = temp_rast_ext_men)
 
 # Conductivity
@@ -195,8 +204,8 @@ depth_slices <- as.numeric(gsub('X', '', depth_slices))
 
 bath <- rast('./Slope/ETOPO1_Bed_c_geotiff.tif')
 values(bath)[which(values(bath) > 0)] <- NA
-bath_slope <- rast(terrain(raster(bath), opt = "slope", unit = "degrees", 
-                      neighbors = 4))
+bath_slope <- terra::terrain(bath, "slope", unit = "degrees", 
+                      neighbors = 4)
 bath_slope <- terra::project(bath_slope, bath)
 values(bath) <- abs(values(bath))
 

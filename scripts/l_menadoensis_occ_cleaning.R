@@ -49,18 +49,30 @@ for(i in indices){
 write.csv(l_menadoensis_down, file = './data/l_menadoensis_3D_occs.csv')
 
 # plotting L menadoensis occs
-pdf('./Plots/Menadoensis_3D_downsampled_occs_with_depth.pdf')
-ggplot(data = land) +
-  geom_sf() +
-  annotation_scale(location = "bl", width_hint = 0.5) +
-  annotation_north_arrow(location = "bl", which_north = "true", 
-                         pad_x = unit(0.75, "in"), pad_y = unit(0.4, "in"),
-                         style = north_arrow_fancy_orienteering) +
-  coord_sf(xlim = c(110, 150), ylim = c(-15, 10)) +
+
+l_chalumnae_down <- read.csv('./data/l_chalumnae_down_3D.csv')
+l_chalumnae_down <- l_chalumnae_down[,-1]
+colnames(l_chalumnae_down) <- colnames(l_menadoensis_down)
+l_menadoensis_down <- rbind(l_menadoensis_down, l_chalumnae_down)
+
+tiff('./Plots/Menadoensis_3D_downsampled_occs_with_depth.tiff',
+     width = 3400,
+     height = 3400,
+     res = 300)
+p <- ggplot() +
+  geom_sf(data = land, fill = "darkgrey", linewidth = 0.6) +
+  coord_sf(xlim = c(120, 137), ylim = c(-6, 3)) +
   geom_point(data = l_menadoensis_down, aes(x = Longitude, y = Latitude, 
-                                          color = depth), size = 3.5) +
-  scale_colour_paletteer_c("viridis::plasma", trans = "reverse") +
+            fill = depth), color = "black", pch = 21, size = 8) +
+  scale_fill_paletteer_c("viridis::plasma", trans = "reverse", 
+                         breaks = c(0, 100, 200, 300, 400, 500, 600, 700)) +
   theme(panel.background = element_rect(fill = "lightblue")) +
-  theme(axis.title.x = element_blank(), axis.title.y = element_blank()) +
-  labs(colour = "Depth (m)")
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank(), 
+        axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        legend.position = "none",
+        panel.grid = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.85)) +
+  labs(fill = "Depth (m)")
+print(p)
 dev.off()

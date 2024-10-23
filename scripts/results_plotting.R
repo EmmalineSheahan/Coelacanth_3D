@@ -11,6 +11,7 @@ library(voluModel)
 library(viridis)
 library(plotly)
 library(ds4psy)
+library(gridExtra)
 
 # creating land for plotting
 target_crs <- "+proj=longlat +datum=WGS84"
@@ -33,29 +34,56 @@ plot(land, add = T, col = NA)
 dev.off()
 
 # plotting 2D suitability
-pdf('./Plots/l_chalumnae_2D_suit_final.pdf')
-ggplot() +
+tiff('./Plots/l_chalumnae_2D_suit_final.tiff',
+     width = 3400,
+     height = 3400,
+     res = 300)
+t1 <- ggplot() +
   geom_spatraster(data = suit_2D) +
-  geom_sf(data = land) +
-  coord_sf(xlim = c(9.25, 63.75), ylim = c(-48.75, 14.25), expand = F) +
+  geom_sf(data = land, fill = "darkgrey", linewidth = 0.6) +
+  coord_sf(xlim = c(15, 57), ylim = c(-45, 7), expand = F) +
   scale_fill_gradientn(colors = c("white", viridis(4)), 
               values = c(0, 0.25, 0.5, 0.75, 1),
               na.value = "transparent",
               name = "Suitability Score") +
   theme(panel.grid.major = element_blank(), 
-        panel.background = element_rect(fill = "white"))
+        panel.background = element_rect(fill = "white"),
+        axis.text.x = element_text(size = 17), axis.text.y = element_text(size = 17),
+        legend.text = element_text(size = 15), legend.title = element_text(size = 17),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.9),
+        legend.key.size = unit(0.6, "cm"),
+        legend.background = element_blank(),
+        legend.box.background = element_rect(colour = "black", linewidth = 0.8),
+        legend.position = c(0.19, 0.87), title = element_text(size = 18)) +
+  ggtitle("Raw Suitability")
+print(t1)
 dev.off()
 
 # plotting 2D threshold
-pdf('./Plots/l_chalumnae_2D_thresh_final.pdf')
-ggplot() +
+tiff('./Plots/l_chalumnae_2D_thresh_final.tiff',
+     width = 3400,
+     height = 3400,
+     res = 300)
+t2 <- ggplot() +
   geom_spatraster(data = thresh_2D) +
-  geom_sf(data = land) +
-  coord_sf(xlim = c(9.25, 63.75), ylim = c(-48.75, 14.25), expand = F) +
+  geom_sf(data = land, fill = "darkgrey", linewidth = 0.6) +
+  coord_sf(xlim = c(15, 57), ylim = c(-45, 7), expand = F) +
   scale_fill_gradientn(colors = c("white", "darkgreen"), values = c(0,1),
                        na.value = "transparent") +
   theme(panel.grid.major = element_blank(), 
-        panel.background = element_rect(fill = "white"), legend.position = "none")
+        panel.background = element_rect(fill = "white"), legend.position = "none",
+        axis.text.x = element_text(size = 17), axis.text.y = element_text(size = 17),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.9),
+        title = element_text(size = 18)) +
+  ggtitle("Presence/Absence")
+print(t2)
+dev.off()
+
+# chalumnae suitabilty and threshold together
+tiff("./Plots/figure_3_real.tiff", width = 3400,
+     height = 3400,
+     res = 300)
+grid.arrange(t1, t2, nrow = 1)
 dev.off()
 
 # reading in 3D suitability and thresholded rasters
@@ -67,39 +95,51 @@ t <- rast('./WOA_18/density_winter_18.tif')
 depth_list <- gsub('X', '', names(t))
 names(thresh_3D) <- paste0(depth_list, " m")
 
-pdf('./Plots/l_chalumnae_3D_plotLayers.pdf')
+pdf('./Plots/l_chalumnae_3D_plotLayers.pdf', pointsize = 3)
 plotLayers(rast = thresh_3D, land = land)
 dev.off()
 
 # plotting 3D suitability layer by layer
-pdf('./Plots/l_chalumnae_3D_suit_all_layers.pdf')
+pdf('./Plots/l_chalumnae_3D_suit_all_layers.pdf', pointsize = 3)
 for(i in 1:dim(suit_3D)[3]) {
 p <- ggplot() +
   geom_spatraster(data = suit_3D[[i]]) +
-  geom_sf(data = land) +
+  geom_sf(data = land, fill = "darkgrey") +
   coord_sf(xlim = c(9.25, 63.75), ylim = c(-48.75, 14.25), expand = F) +
   scale_fill_gradientn(colors = c("white", viridis(4)), 
                        values = c(0, 0.25, 0.5, 0.75, 1),
                        na.value = "transparent",
                        name = "Suitability Score") +
   theme(panel.grid.major = element_blank(), 
-        panel.background = element_rect(fill = "white")) +
+        panel.background = element_rect(fill = "white"),
+        axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15),
+        legend.text = element_text(size = 13), legend.title = element_text(size = 13),
+        plot.title = element_text(size = 17),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),
+        legend.key.size = unit(0.4, "cm"),
+        legend.background = element_rect(fill = "white", linetype = "solid", 
+                                         colour = "black"),
+        legend.position = c(0.14, 0.904)) +
   ggtitle(paste0("Suitability at ", depth_list[i], " m"))
 print(p)
 }
 dev.off()
 
-pdf('./Plots/l_chalumnae_3D_thresh_all_layers.pdf')
+pdf('./Plots/l_chalumnae_3D_thresh_all_layers.pdf', pointsize = 3)
 for(i in 1:dim(thresh_3D)[3]) {
   p <- ggplot() +
     geom_spatraster(data = thresh_3D[[i]]) +
-    geom_sf(data = land) +
+    geom_sf(data = land, fill = "darkgrey") +
     coord_sf(xlim = c(9.25, 63.75), ylim = c(-48.75, 14.25), expand = F) +
     scale_fill_gradientn(colors = c("white", "darkgreen"), 
                          values = c(0, 1),
                          na.value = "transparent") +
     theme(panel.grid.major = element_blank(), 
-          panel.background = element_rect(fill = "white"), legend.position = "none") +
+          panel.background = element_rect(fill = "white"), legend.position = "none",
+          axis.text.x = element_text(size = 15), axis.text.y = element_text(size = 15),
+          legend.text = element_text(size = 15), legend.title = element_text(size = 15),
+          plot.title = element_text(size = 17),
+          panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5)) +
     ggtitle(paste0("Thresholded Presence at ", depth_list[i], " m"))
   print(p)
 }
@@ -367,7 +407,7 @@ thresh_topdown_df <- thresh_topdown %>% dplyr::select(x, y, thresh_val)
 thresh_topdown_rast <- rast(thresh_topdown_df, type = 'xyz', crs = target_crs)
 
 pdf('./Plots/l_chalumnae_3D_contour_topdown.pdf')
-p <- ggplot() +
+p_top <- ggplot() +
   geom_spatraster(data = thresh_topdown_rast) +
   geom_sf(data = land) +
   coord_sf(xlim = c(9.25, 63.75), ylim = c(-48.75, 14.25), expand = F) +
@@ -379,7 +419,7 @@ p <- ggplot() +
         axis.title = element_text(size = 15)) +
   xlab("Longitude") +
   ylab("Latitude")
-print(p)
+print(p_top)
 dev.off()
 
 # threshold east of top
@@ -388,7 +428,7 @@ thresh_east <- contour_mat(wanted_mat = thresh_mat, wanted_z = 'x', wanted_x = "
 thresh_east_df <- thresh_east %>% dplyr::select(x, y, thresh_val)
 
 pdf('./Plots/l_chalumnae_3D_contour_eastoftop.pdf')
-p <- ggplot(data = thresh_east_df, aes(x, y)) +
+p_east <- ggplot(data = thresh_east_df, aes(x, y)) +
   geom_tile(aes(fill = thresh_val), colour = 'darkgreen') +
   scale_x_reverse() +
   theme(panel.grid.major = element_blank(), 
@@ -397,7 +437,7 @@ p <- ggplot(data = thresh_east_df, aes(x, y)) +
   xlab("Depth (m)") +
   ylab("Latitude") +
   ylim(-48.75, 14.25)
-print(p)
+print(p_east)
 dev.off()
 
 # threshold south of top
@@ -406,7 +446,7 @@ thresh_south <- contour_mat(wanted_mat = thresh_mat, wanted_z = "y", wanted_x = 
 thresh_south_df <- thresh_south %>% dplyr::select(x, y, thresh_val)
 
 pdf('./Plots/l_chalumnae_3D_contour_southoftop.pdf')
-p <- ggplot(data = thresh_south_df, aes(x, y)) +
+p_south <- ggplot(data = thresh_south_df, aes(x, y)) +
   geom_tile(aes(fill = thresh_val), colour = 'darkgreen') +
   theme(panel.grid.major = element_blank(), 
         panel.background = element_rect(fill = "white"), legend.position = "none",
@@ -414,7 +454,33 @@ p <- ggplot(data = thresh_south_df, aes(x, y)) +
   xlab("Longitude") +
   ylab("Depth (m)") +
   xlim(9.25, 63.75)
-print(p)
+print(p_south)
+dev.off()
+
+# full L chalumnae threshold figure
+pdf('./Plots/Final_chalumnae_thresh_contour_all.pdf')
+p_top <- ggplot() +
+  geom_spatraster(data = thresh_topdown_rast) +
+  geom_sf(data = land) +
+  coord_sf(xlim = c(9.25, 63.75), ylim = c(-48.75, 14.25), expand = F) +
+  scale_fill_gradientn(colors = c("white", "darkgreen"), 
+                       values = c(0, 1),
+                       na.value = "transparent") +
+  theme(panel.grid.major = element_blank(), axis.title.x = element_blank(), 
+        axis.text.x = element_blank(), axis.ticks.x = element_blank(),
+        panel.background = element_rect(fill = "white"), legend.position = "none",
+        axis.title = element_text(size = 15)) +
+  ylab("Latitude")
+p_east <- ggplot(data = thresh_east_df, aes(x, y)) +
+  geom_tile(aes(fill = thresh_val), colour = 'darkgreen') +
+  scale_x_reverse() +
+  theme(panel.grid.major = element_blank(), axis.title.y = element_blank(),
+        axis.text.y = element_blank(), axis.ticks.y = element_blank(),
+        panel.background = element_rect(fill = "white"), legend.position = "none",
+        axis.title = element_text(size = 15)) +
+  xlab("Depth (m)") +
+  ylim(-48.75, 14.25)
+grid.arrange(p_top, p_east, p_south, ncol = 2)
 dev.off()
 
 # suitability topdown
@@ -425,7 +491,7 @@ suit_topdown_df <- suit_topdown %>% dplyr::select(x, y, suit_val)
 suit_topdown_rast <- rast(suit_topdown_df, type = 'xyz', crs = target_crs)
 
 pdf('./Plots/l_chalumnae_3D_suit_contour_topdown.pdf')
-p <- ggplot() +
+p_top <- ggplot() +
   geom_spatraster(data = suit_topdown_rast) +
   geom_sf(data = land) +
   coord_sf(xlim = c(9.25, 63.75), ylim = c(-48.75, 14.25), expand = F) +
@@ -438,7 +504,7 @@ p <- ggplot() +
         axis.title = element_text(size = 15)) +
   xlab("Longitude") +
   ylab("Latitude")
-print(p)
+print(p_top)
 dev.off()
 
 # suitability east of top
@@ -448,7 +514,7 @@ suit_east <- contour_mat(wanted_mat = suit_mat, wanted_z = 'x', wanted_x = "z",
 suit_east_df <- suit_east %>% dplyr::select(x, y, suit_val)
 
 pdf('./Plots/l_chalumnae_3D_suit_contour_eastoftop.pdf')
-p <- ggplot(data = suit_east_df, aes(x, y, fill = suit_val)) +
+p_east <- ggplot(data = suit_east_df, aes(x, y, fill = suit_val)) +
   geom_tile() +
   scale_fill_gradientn(colors = c("white", viridis(4)), 
                        values = c(0, 0.25, 0.5, 0.75, 1),
@@ -461,7 +527,7 @@ p <- ggplot(data = suit_east_df, aes(x, y, fill = suit_val)) +
   xlab("Depth (m)") +
   ylab("Latitude") +
   ylim(-48.75, 14.25)
-print(p)
+print(p_east)
 dev.off()
 
 # suitability south of top
@@ -471,7 +537,7 @@ suit_south <- contour_mat(wanted_mat = suit_mat, wanted_z = "y", wanted_x = 'x',
 suit_south_df <- suit_south %>% dplyr::select(x, y, suit_val)
 
 pdf('./Plots/l_chalumnae_3D_suit_contour_southoftop.pdf')
-p <- ggplot(data = suit_south_df, aes(x, y, fill = suit_val)) +
+p_south <- ggplot(data = suit_south_df, aes(x, y, fill = suit_val)) +
   geom_tile() +
   scale_fill_gradientn(colors = c("white", viridis(4)), 
                        values = c(0, 0.25, 0.5, 0.75, 1),
@@ -483,54 +549,115 @@ p <- ggplot(data = suit_south_df, aes(x, y, fill = suit_val)) +
   xlab("Longitude") +
   ylab("Depth (m)") +
   xlim(9.25, 63.75)
-print(p)
+print(p_south)
+dev.off()
+
+# final L chalumnae suitability contour figure
+pdf('./Plots/Final_chalumnae_suitability_contour_figure.pdf')
+p_top <- ggplot() +
+  geom_spatraster(data = suit_topdown_rast, show.legend = F) +
+  geom_sf(data = land) +
+  coord_sf(xlim = c(9.25, 63.75), ylim = c(-48.75, 14.25), expand = F) +
+  scale_fill_gradientn(colors = c("white", viridis(4)), 
+                       values = c(0, 0.25, 0.5, 0.75, 1),
+                       na.value = "transparent",
+                       name = "Suitability Score") +
+  theme(panel.grid.major = element_blank(), axis.title.x = element_blank(), 
+        axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        axis.title = element_text(size = 15)) +
+  ylab("Latitude")
+p_east <- ggplot(data = suit_east_df, aes(x, y, fill = suit_val)) +
+  geom_tile() +
+  scale_fill_gradientn(colors = c("white", viridis(4)), 
+                       values = c(0, 0.25, 0.5, 0.75, 1),
+                       na.value = "transparent",
+                       name = "Suitability Score") +
+  scale_x_reverse() +
+  theme(panel.grid.major = element_blank(), axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(), axis.text.y = element_blank(),
+        panel.background = element_rect(fill = "white"), legend.position = "none",
+        axis.title = element_text(size = 15)) +
+  xlab("Depth (m)") +
+  ylim(-48.75, 14.25)
+grid.arrange(p_top, p_east, p_south, ncol = 2)
 dev.off()
 
 # Indopacific Projection 2D
 l_menadoensis_2D <- read.csv('./data/l_menadoensis_2D_occs.csv')
 
 # suitability
+new_ext <- ext(90, 150, -30, 30)
 Indo_suit_2D <- rast('./Model_results/indopacific_projection_2D.tif')
+Indo_suit_2D <- crop(Indo_suit_2D, new_ext)
 
-pdf('./Plots/Indo_projection_2D_suit_final.pdf')
-ggplot() +
+tiff('./Plots/Indo_projection_2D_suit_final.tiff', width = 3400, height = 3400, res = 300)
+p1 <- ggplot() +
   geom_spatraster(data = Indo_suit_2D) +
-  geom_sf(data = land) +
-  coord_sf(xlim = c(78.75, 150), ylim = c(-30, 39), expand = F) +
+  geom_sf(data = land, fill = "darkgrey", linewidth = 0.6) +
+  coord_sf(xlim = c(90, 150), ylim = c(-30, 30), expand = F) +
   scale_fill_gradientn(colors = c("white", viridis(4)), 
                        values = c(0, 0.25, 0.5, 0.75, 1),
                        na.value = "transparent",
                        name = "Suitability Score") +
   theme(panel.grid.major = element_blank(), 
-        panel.background = element_rect(fill = "white"))
+        panel.background = element_rect(fill = "white"),
+        axis.text.x = element_text(size = 17), axis.text.y = element_text(size = 17),
+        legend.text = element_text(size = 13), legend.title = element_text(size = 15),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.9),
+        legend.key.size = unit(0.4, "cm"),
+        legend.background = element_blank(),
+        legend.box.background = element_rect(colour = "black", linewidth = 0.85),
+        legend.position = c(0.17, 0.87), title = element_text(size = 18)) +
+  ggtitle("Raw Suitability")
+print(p1)
 dev.off()
 
 # plotting 2D threshold
 indo_thresh_2D <- rast('./Model_results/indopacific_threshold_2D.tif')
 indo_thresh_2D_nm <- rast('./Model_results/indopacific_threshold_2D_notmasked.tif')
+indo_thresh_2D_nm <- crop(indo_thresh_2D_nm, new_ext)
 
-pdf('./Plots/Indo_projection_2D_thresh_final.pdf')
-ggplot() +
+tiff('./Plots/Indo_projection_2D_thresh_final.tiff', width = 3400, height = 3400,
+     res = 300)
+p2 <- ggplot() +
   geom_spatraster(data = indo_thresh_2D_nm) +
-  geom_sf(data = land) +
-  coord_sf(xlim = c(78.75, 150), ylim = c(-30, 39), expand = F) +
+  geom_sf(data = land, fill = "darkgrey", linewidth = 0.6) +
+  coord_sf(xlim = c(90, 150), ylim = c(-30, 30), expand = F) +
   scale_fill_gradientn(colors = c("white", "darkgreen"), values = c(0,1),
                        na.value = "transparent") +
   theme(panel.grid.major = element_blank(), 
-        panel.background = element_rect(fill = "white"), legend.position = "none")
+        panel.background = element_rect(fill = "white"),
+        axis.text.x = element_text(size = 17), axis.text.y = element_text(size = 17),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.9),
+        legend.position = "none", title = element_text(size = 18)) +
+  ggtitle("Presence/Absence")
+print(p2)
 dev.off()
 
-pdf('./Plots/Indo_projection_2D_thresh_final_zoom_points.pdf')
+# indo projection 2D suitability and threshold together
+tiff("./Plots/figure_5_real.tiff",
+     width = 3400, height = 3400, res = 300)
+grid.arrange(p1, p2, nrow = 1)
+dev.off()
+
+tiff('./Plots/Indo_projection_2D_thresh_final_zoom_points.tiff',
+     width = 3400, height = 3400, res = 300)
 ggplot() +
   geom_spatraster(data = indo_thresh_2D_nm) +
-  geom_sf(data = land) +
-  geom_point(data = l_menadoensis_2D, aes(x = Longitude, y = Latitude), size = 2,
+  geom_sf(data = land, fill = "darkgrey", linewidth = 0.65) +
+  geom_point(data = l_menadoensis_2D, aes(x = Longitude, y = Latitude), size = 7,
              color = "#440154FF") +
   coord_sf(xlim = c(120, 137), ylim = c(-5, 5), expand = F) +
-  scale_fill_gradientn(colors = c("white", "#35B779FF"), values = c(0,1),
+  scale_fill_gradientn(colors = c("white", "#03C04A"), values = c(0,1),
                        na.value = "transparent") +
   theme(panel.grid.major = element_blank(), 
-        panel.background = element_rect(fill = "white"), legend.position = "none")
+        panel.background = element_rect(fill = "white"), legend.position = "none",
+        axis.text = element_text(size = 20),
+        axis.title = element_blank(),
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.9),
+        title = element_text(size = 20)) +
+  ggtitle("2D Thresholded Presence Between Sulawesi and Papua New Guinea")
 dev.off()
 
 # 3D Indo plots
@@ -542,21 +669,24 @@ men_depths <- as.numeric(gsub("X", '', names(conductivity_summer_18_indo)))
 indo_3D_suit <- rast('./Model_results/Indopacific_projection_3D.tif')
 indo_3D_thresh <- rast('./Model_results/Indopacific_thresholded_3D.tif')
 indo_3D_thresh_nm <- rast('./Model_results/Indopacific_thresholded_3D_notmasked.tif')
+indo_3D_suit <- crop(indo_3D_suit, new_ext)
+indo_3D_thresh <- crop(indo_3D_thresh, new_ext)
+indo_3D_thresh_nm <- crop(indo_3D_thresh_nm, new_ext)
 
 # plotlayers plot of suitability
 names(indo_3D_thresh) <- men_depths
 
-pdf('./Plots/indo_3D_plotlayers.pdf')
+pdf('./Plots/indo_3D_plotlayers.pdf', pointsize = 3)
 plotLayers(rast = indo_3D_thresh, land = land)
 dev.off()
 
 # suitability plot layer by layer
-pdf('./Plots/indo_3D_suit_all_layers.pdf')
+pdf('./Plots/indo_3D_suit_all_layers.pdf', pointsize = 3)
 for(i in 1:dim(indo_3D_suit)[3]) {
   p <- ggplot() +
     geom_spatraster(data = indo_3D_suit[[i]]) +
     geom_sf(data = land) +
-    coord_sf(xlim = c(78.75, 150), ylim = c(-30, 39), expand = F) +
+    coord_sf(xlim = c(90, 150), ylim = c(-30, 30), expand = F) +
     scale_fill_gradientn(colors = c("white", viridis(4)), 
                          values = c(0, 0.25, 0.5, 0.75, 1),
                          na.value = "transparent",
@@ -569,12 +699,12 @@ for(i in 1:dim(indo_3D_suit)[3]) {
 dev.off()
 
 # thresholded plot layer by layer
-pdf('./Plots/indo_3D_thresh_all_layers.pdf')
+pdf('./Plots/indo_3D_thresh_all_layers.pdf', pointsize = 3)
 for(i in 1:dim(indo_3D_thresh_nm)[3]) {
   p <- ggplot() +
     geom_spatraster(data = indo_3D_thresh_nm[[i]]) +
     geom_sf(data = land) +
-    coord_sf(xlim = c(78.75, 150), ylim = c(-30, 39), expand = F) +
+    coord_sf(xlim = c(90, 150), ylim = c(-30, 30), expand = F) +
     scale_fill_gradientn(colors = c("white", "darkgreen"), 
                          values = c(0, 1),
                          na.value = "transparent") +
@@ -590,22 +720,30 @@ men_3D_occs <- read.csv('./data/l_menadoensis_3D_occs.csv')
 unique_depths <- unique(men_3D_occs$depth)
 want_layers <- which(men_depths %in% unique_depths)
 
-pdf('./Plots/indo_zoom_menadoensis_occ_plots.pdf')
+p_list <- vector("list", length = length(want_layers))
 for (i in seq_along(want_layers)) {
   need_dat <- men_3D_occs %>% filter(depth == men_depths[want_layers[i]])
   p <- ggplot() +
     geom_spatraster(data = indo_3D_thresh_nm[[want_layers[i]]]) +
-    geom_sf(data = land) +
-    geom_point(data = need_dat, aes(x = Longitude, y = Latitude), size = 2,
+    geom_sf(data = land, fill = "darkgrey", linewidth = 0.6) +
+    geom_point(data = need_dat, aes(x = Longitude, y = Latitude), size = 5,
                color = "#440154FF") +
     coord_sf(xlim = c(120, 137), ylim = c(-5, 5), expand = F) +
-    scale_fill_gradientn(colors = c("white", "#35B779FF"), values = c(0,1),
+    scale_fill_gradientn(colors = c("white", "#03C04A"), values = c(0,1),
                          na.value = "transparent") +
     theme(panel.grid.major = element_blank(), 
-        panel.background = element_rect(fill = "white"), legend.position = "none") +
+          panel.background = element_rect(fill = "white"), legend.position = "none",
+          axis.text = element_text(size = 15),
+          panel.border = element_rect(color = "black", fill = NA, linewidth = 0.8),
+          axis.title = element_blank(),
+          title = element_text(size = 15)) +
     ggtitle(paste0("Thresholded Presence at ", men_depths[want_layers[i]], " m"))
-  print(p)
+  p_list[[i]] <- p
 }
+
+tiff('./Plots/indo_zoom_menadoensis_occ_plots.tiff', width = 3400, height = 3400, res = 300)
+grid.arrange(p_list[[1]], p_list[[2]], p_list[[3]], p_list[[4]], p_list[[5]], p_list[[6]],
+             ncol = 2)
 dev.off()
 
 # converting rasters to xyz matrices
@@ -622,10 +760,10 @@ thresh_topdown_rast_indo <- rast(thresh_topdown_df_indo, type = 'xyz',
                                  crs = target_crs)
 
 pdf('./Plots/Indonesia_3D_contour_topdown.pdf')
-p <- ggplot() +
+p_top <- ggplot() +
   geom_spatraster(data = thresh_topdown_rast_indo) +
   geom_sf(data = land) +
-  coord_sf(xlim = c(78.75, 150), ylim = c(-39, 30), expand = F) +
+  coord_sf(xlim = c(90, 150), ylim = c(-30, 30), expand = F) +
   scale_fill_gradientn(colors = c("white", "darkgreen"), 
                        values = c(0, 1),
                        na.value = "transparent") +
@@ -634,7 +772,7 @@ p <- ggplot() +
         axis.title = element_text(size = 15)) +
   xlab("Longitude") +
   ylab("Latitude")
-print(p)
+print(p_top)
 dev.off()
 
 # threshold east of top
@@ -644,7 +782,7 @@ thresh_east_indo <- contour_mat(wanted_mat = indo_thresh_mat, wanted_z = 'x',
 thresh_east_df_indo <- thresh_east_indo %>% dplyr::select(x, y, thresh_val)
 
 pdf('./Plots/Indonesia_3D_contour_eastoftop.pdf')
-p <- ggplot(data = thresh_east_df_indo, aes(x, y)) +
+p_east <- ggplot(data = thresh_east_df_indo, aes(x, y)) +
   geom_tile(aes(fill = thresh_val), colour = 'darkgreen') +
   scale_x_reverse() +
   theme(panel.grid.major = element_blank(), 
@@ -652,8 +790,8 @@ p <- ggplot(data = thresh_east_df_indo, aes(x, y)) +
         axis.title = element_text(size = 15)) +
   xlab("Depth (m)") +
   ylab("Latitude") +
-  ylim(-39, 30)
-print(p)
+  ylim(-30, 30)
+print(p_east)
 dev.off()
 
 # threshold south of top
@@ -663,15 +801,41 @@ thresh_south_indo <- contour_mat(wanted_mat = indo_thresh_mat, wanted_z = "y",
 thresh_south_df_indo <- thresh_south_indo %>% dplyr::select(x, y, thresh_val)
 
 pdf('./Plots/Indonesia_3D_contour_southoftop.pdf')
-p <- ggplot(data = thresh_south_df_indo, aes(x, y)) +
+p_south <- ggplot(data = thresh_south_df_indo, aes(x, y)) +
   geom_tile(aes(fill = thresh_val), colour = 'darkgreen') +
   theme(panel.grid.major = element_blank(), 
         panel.background = element_rect(fill = "white"), legend.position = "none",
         axis.title = element_text(size = 15)) +
   xlab("Longitude") +
   ylab("Depth (m)") +
-  xlim(78.75, 150)
-print(p)
+  xlim(90, 150)
+print(p_south)
+dev.off()
+
+# Final chalumnae projected 3D threshold contour figure
+pdf('./Plots/Final_chalumnae_projected_indo_thresh_3D.pdf')
+p_top <- ggplot() +
+  geom_spatraster(data = thresh_topdown_rast_indo) +
+  geom_sf(data = land) +
+  coord_sf(xlim = c(90, 150), ylim = c(-30, 30), expand = F) +
+  scale_fill_gradientn(colors = c("white", "darkgreen"), 
+                       values = c(0, 1),
+                       na.value = "transparent") +
+  theme(panel.grid.major = element_blank(), axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+        panel.background = element_rect(fill = "white"), legend.position = "none",
+        axis.title = element_text(size = 15)) +
+  ylab("Latitude")
+p_east <- ggplot(data = thresh_east_df_indo, aes(x, y)) +
+  geom_tile(aes(fill = thresh_val), colour = 'darkgreen') +
+  scale_x_reverse() +
+  theme(panel.grid.major = element_blank(), axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(), axis.text.y = element_blank(),
+        panel.background = element_rect(fill = "white"), legend.position = "none",
+        axis.title = element_text(size = 15)) +
+  xlab("Depth (m)") +
+  ylim(-30, 30)
+grid.arrange(p_top, p_east, p_south, ncol = 2)
 dev.off()
 
 # suitability topdown
@@ -683,10 +847,10 @@ suit_topdown_df_indo <- suit_topdown_indo %>% dplyr::select(x, y, suit_val)
 suit_topdown_rast_indo <- rast(suit_topdown_df_indo, type = 'xyz', crs = target_crs)
 
 pdf('./Plots/Indonesia_3D_suit_contour_topdown.pdf')
-p <- ggplot() +
+p_top <- ggplot() +
   geom_spatraster(data = suit_topdown_rast_indo) +
   geom_sf(data = land) +
-  coord_sf(xlim = c(78.75, 150), ylim = c(-39, 30), expand = F) +
+  coord_sf(xlim = c(90, 150), ylim = c(-30, 30), expand = F) +
   scale_fill_gradientn(colors = c("white", viridis(4)), 
                        values = c(0, 0.25, 0.5, 0.75, 1),
                        na.value = "transparent",
@@ -696,7 +860,7 @@ p <- ggplot() +
         axis.title = element_text(size = 15)) +
   xlab("Longitude") +
   ylab("Latitude")
-print(p)
+print(p_top)
 dev.off()
 
 # suitability east of top
@@ -707,7 +871,7 @@ suit_east_indo <- contour_mat(wanted_mat = indo_suit_mat, wanted_z = 'x',
 suit_east_df_indo <- suit_east_indo %>% dplyr::select(x, y, suit_val)
 
 pdf('./Plots/Indonesia_3D_suit_contour_eastoftop.pdf')
-p <- ggplot(data = suit_east_df_indo, aes(x, y, fill = suit_val)) +
+p_east <- ggplot(data = suit_east_df_indo, aes(x, y, fill = suit_val)) +
   geom_tile() +
   scale_fill_gradientn(colors = c("white", viridis(4)), 
                        values = c(0, 0.25, 0.5, 0.75, 1),
@@ -719,8 +883,8 @@ p <- ggplot(data = suit_east_df_indo, aes(x, y, fill = suit_val)) +
         axis.title = element_text(size = 15)) +
   xlab("Depth (m)") +
   ylab("Latitude") +
-  ylim(-39, 30)
-print(p)
+  ylim(-30, 30)
+print(p_east)
 dev.off()
 
 # suitability south of top
@@ -731,7 +895,7 @@ suit_south_indo <- contour_mat(wanted_mat = indo_suit_mat, wanted_z = "y",
 suit_south_df_indo <- suit_south_indo %>% dplyr::select(x, y, suit_val)
 
 pdf('./Plots/Indonesia_3D_suit_contour_southoftop.pdf')
-p <- ggplot(data = suit_south_df_indo, aes(x, y, fill = suit_val)) +
+p_south <- ggplot(data = suit_south_df_indo, aes(x, y, fill = suit_val)) +
   geom_tile() +
   scale_fill_gradientn(colors = c("white", viridis(4)), 
                        values = c(0, 0.25, 0.5, 0.75, 1),
@@ -742,6 +906,39 @@ p <- ggplot(data = suit_south_df_indo, aes(x, y, fill = suit_val)) +
         axis.title = element_text(size = 15)) +
   xlab("Longitude") +
   ylab("Depth (m)") +
-  xlim(78.75, 150)
+  xlim(90, 150)
+print(p_south)
+dev.off()
+
+# final chalumnae projected suitability figure
+pdf('./Plots/Final_chalumnae_projected_indo_suit_3D.pdf')
+p_top <- ggplot() +
+  geom_spatraster(data = suit_topdown_rast_indo, show.legend = F) +
+  geom_sf(data = land) +
+  coord_sf(xlim = c(90, 150), ylim = c(-30, 30), expand = F) +
+  scale_fill_gradientn(colors = c("white", viridis(4)), 
+                       values = c(0, 0.25, 0.5, 0.75, 1),
+                       na.value = "transparent",
+                       name = "Suitability Score") +
+  theme(panel.grid.major = element_blank(), axis.title.x = element_blank(),
+        axis.ticks.x = element_blank(), axis.text.x = element_blank(),
+        panel.background = element_rect(fill = "white"),
+        axis.title = element_text(size = 15)) +
+  ylab("Latitude")
+p_east <- ggplot(data = suit_east_df_indo, aes(x, y, fill = suit_val)) +
+  geom_tile() +
+  scale_fill_gradientn(colors = c("white", viridis(4)), 
+                       values = c(0, 0.25, 0.5, 0.75, 1),
+                       na.value = "transparent",
+                       name = "Suitability Score") +
+  scale_x_reverse() +
+  theme(panel.grid.major = element_blank(), axis.title.y = element_blank(),
+        axis.ticks.y = element_blank(), axis.text.y = element_blank(),
+        panel.background = element_rect(fill = "white"), legend.position = "none",
+        axis.title = element_text(size = 15)) +
+  xlab("Depth (m)") +
+  ylim(-30, 30)
+p <- grid.arrange(p_top, p_east, p_south, ncol = 2)
 print(p)
 dev.off()
+

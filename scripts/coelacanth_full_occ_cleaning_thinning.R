@@ -1,4 +1,4 @@
-# Formatting and thinning the full Ceolacanth occurrence data set
+# Formatting and thinning the full Coelacanth occurrence data set
 
 library(dplyr)
 library(sf)
@@ -72,20 +72,44 @@ st_crs(l_chalumnae_down_sp) <- target_crs
 plot(l_chalumnae_down_sp$geometry, col = "red")
 plot(land, col = NA, add = T)
 
-pdf('./Plots/Coelacanth_3D_downsampled_occs_with_depth.pdf')
-ggplot(data = land) +
-  geom_sf() +
-  annotation_scale(location = "bl", width_hint = 0.5) +
+# plot of whole map for figure 1
+tiff('./Plots/Whole_Map.tiff', width = 3400, height = 3400, res = 300)
+ggplot() +
+  geom_sf(data = land, fill = "darkgrey", linewidth = 0.55) +
+  coord_sf(xlim = c(20, 150), ylim = c(-45, 30)) +
+  annotation_scale(location = "bl", width_hint = 0.25, height = unit(0.5, "cm"), 
+                   text_cex = 1) +
   annotation_north_arrow(location = "bl", which_north = "true", 
-                         pad_x = unit(0.75, "in"), pad_y = unit(0.5, "in"),
+                         pad_x = unit(3, "in"), pad_y = unit(0.2, "in"),
+                         height = unit(1.5, "cm"), width = unit(1.5, "cm"),
                          style = north_arrow_fancy_orienteering) +
-  coord_sf(xlim = c(24.875, 47.125), ylim = c(-37.125, -3.125)) +
-  geom_point(data = l_chalumnae_down, aes(x = longitude, y = latitude, 
-                                          color = depth), size = 3.5) +
-  scale_colour_paletteer_c("viridis::plasma", trans = "reverse") +
   theme(panel.background = element_rect(fill = "lightblue")) +
-  theme(axis.title.x = element_blank(), axis.title.y = element_blank()) +
-  labs(colour = "Depth (m)")
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank(), 
+        axis.text.x = element_text(size = 16), axis.text.y = element_text(size = 16),
+        panel.grid = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.75))
+dev.off()
+
+# plot of just the Mozambique channel for figure 1
+tiff('./Plots/Coelacanth_3D_downsampled_occs_with_depth.tiff', width = 3400,
+     height = 3400, res = 300)
+ggplot() +
+  geom_sf(data = land, fill = "darkgrey", linewidth = 0.6) +
+  coord_sf(xlim = c(27, 45.5), ylim = c(-34.75, -3.125)) +
+  geom_point(data = l_chalumnae_down, aes(x = longitude, y = latitude, 
+                                  fill = depth), color = "black", pch = 21, size = 8) +
+  scale_fill_paletteer_c("viridis::plasma", trans = "reverse", 
+                         breaks = c(0, 100, 200, 300, 400, 500, 600, 700)) +
+  theme(panel.background = element_rect(fill = "lightblue")) +
+  theme(axis.title.x = element_blank(), axis.title.y = element_blank(), 
+        axis.text.x = element_blank(), axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        legend.background = element_blank(),
+        legend.box.background = element_rect(colour = "black", linewidth = 0.6),
+        legend.text = element_text(size = 13), legend.title = element_text(size = 19),
+        panel.grid = element_blank(), 
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.85)) +
+  labs(fill = "Depth (m)")
 dev.off()
 
 # writing downsampled occurrences with indexed depth to file
